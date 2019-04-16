@@ -1314,10 +1314,12 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
             if self.not_enough_funds:
                 amt_color, fee_color = ColorScheme.RED, ColorScheme.RED
                 feerate_color = ColorScheme.RED
-                text = _( "Not enough funds" )
+                text = _("Not enough funds")
                 c, u, x = self.wallet.get_frozen_balance()
                 if c+u+x:
-                    text += ' (' + self.format_amount(c+u+x).strip() + ' ' + self.base_unit() + ' ' +_("are frozen") + ')'
+                    text += " ({} {} {})".format(
+                        self.format_amount(c + u + x).strip(), self.base_unit(), _("are frozen")
+                    )
 
             # blue color denotes auto-filled values
             elif self.fee_e.isModified():
@@ -1850,9 +1852,14 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         self.update_status()
         run_hook('do_clear', self)
 
-    def set_frozen_state(self, addrs, freeze):
-        self.wallet.set_frozen_state(addrs, freeze)
+    def set_frozen_state_of_addresses(self, addrs, freeze: bool):
+        self.wallet.set_frozen_state_of_addresses(addrs, freeze)
         self.address_list.update()
+        self.utxo_list.update()
+        self.update_fee()
+
+    def set_frozen_state_of_coins(self, utxos, freeze: bool):
+        self.wallet.set_frozen_state_of_coins(utxos, freeze)
         self.utxo_list.update()
         self.update_fee()
 
@@ -2327,6 +2334,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         layout = QGridLayout(d)
 
         message_e = QTextEdit()
+        message_e.setAcceptRichText(False)
         layout.addWidget(QLabel(_('Message')), 1, 0)
         layout.addWidget(message_e, 1, 1)
         layout.setRowStretch(2,3)
@@ -2337,6 +2345,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         layout.addWidget(address_e, 2, 1)
 
         signature_e = QTextEdit()
+        signature_e.setAcceptRichText(False)
         layout.addWidget(QLabel(_('Signature')), 3, 0)
         layout.addWidget(signature_e, 3, 1)
         layout.setRowStretch(3,1)
@@ -2393,6 +2402,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         layout = QGridLayout(d)
 
         message_e = QTextEdit()
+        message_e.setAcceptRichText(False)
         layout.addWidget(QLabel(_('Message')), 1, 0)
         layout.addWidget(message_e, 1, 1)
         layout.setRowStretch(2,3)
@@ -2405,6 +2415,7 @@ class ElectrumWindow(QMainWindow, MessageBoxMixin, PrintError):
         layout.addWidget(pubkey_e, 2, 1)
 
         encrypted_e = QTextEdit()
+        encrypted_e.setAcceptRichText(False)
         layout.addWidget(QLabel(_('Encrypted')), 3, 0)
         layout.addWidget(encrypted_e, 3, 1)
         layout.setRowStretch(3,1)

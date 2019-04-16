@@ -136,7 +136,7 @@ class TrustedCoinCosignerClient(PrintError):
         except:
             return await resp.text()
 
-    def send_request(self, method, relative_url, data=None):
+    def send_request(self, method, relative_url, data=None, *, timeout=None):
         network = Network.get_instance()
         if not network:
             raise ErrorConnectingServer('You are offline.')
@@ -148,9 +148,17 @@ class TrustedCoinCosignerClient(PrintError):
             headers['user-agent'] = self.user_agent
         try:
             if method == 'get':
-                response = Network.send_http_on_proxy(method, url, params=data, headers=headers, on_finish=self.handle_response)
+                response = Network.send_http_on_proxy(method, url,
+                                                      params=data,
+                                                      headers=headers,
+                                                      on_finish=self.handle_response,
+                                                      timeout=timeout)
             elif method == 'post':
-                response = Network.send_http_on_proxy(method, url, json=data, headers=headers, on_finish=self.handle_response)
+                response = Network.send_http_on_proxy(method, url,
+                                                      json=data,
+                                                      headers=headers,
+                                                      on_finish=self.handle_response,
+                                                      timeout=timeout)
             else:
                 assert False
         except TrustedCoinException:
@@ -219,7 +227,8 @@ class TrustedCoinCosignerClient(PrintError):
             'otp': otp,
             'transaction': transaction
         }
-        return self.send_request('post', 'cosigner/%s/sign' % quote(id), payload)
+        return self.send_request('post', 'cosigner/%s/sign' % quote(id), payload,
+                                 timeout=60)
 
     def transfer_credit(self, id, recipient, otp, signature_callback):
         """
@@ -465,15 +474,17 @@ class TrustedCoinPlugin(BasePlugin):
         return f
 
     @finish_requesting
-    def request_billing_info(self, wallet: 'Wallet_2fa'):
+    def request_billing_info(self, wallet: 'Wallet_2fa', *, suppress_connection_error=True):
         if wallet.can_sign_without_server():
             return
         self.print_error("request billing info")
         try:
             billing_info = server.get(wallet.get_user_id()[1])
         except ErrorConnectingServer as e:
-            self.print_error(str(e))
-            return
+            if suppress_connection_error:
+                self.print_error(str(e))
+                return
+            raise
         billing_index = billing_info['billing_index']
         # add segwit billing address; this will be used for actual billing
         billing_address = make_billing_address(wallet, billing_index, addr_type='segwit')
